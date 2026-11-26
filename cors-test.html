@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>cors probe</title></head>
+<body style="background:#111;color:#eee;font:13px monospace;padding:12px">
+<h3>Yahoo CORS probe</h3>
+<pre id="out">running…</pre>
+<script>
+var path='/v8/finance/chart/SOXX?range=6mo&interval=1d';
+var cands=[
+  ['query1','https://query1.finance.yahoo.com'+path],
+  ['query2','https://query2.finance.yahoo.com'+path],
+  ['allorigins','https://api.allorigins.win/raw?url='+encodeURIComponent('https://query1.finance.yahoo.com'+path)],
+  ['allorigins2','https://api.allorigins.win/get?url='+encodeURIComponent('https://query1.finance.yahoo.com'+path)],
+  ['corsproxy','https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com'+path)],
+  ['thingproxy','https://thingproxy.freeboard.io/fetch/https://query1.finance.yahoo.com'+path],
+  ['codetabs','https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent('https://query1.finance.yahoo.com'+path)],
+  ['isomorphic','https://cors.isomorphic-git.org/https://query1.finance.yahoo.com'+path],
+  ['whateverorigin','https://www.whateverorigin.org/get?url='+encodeURIComponent('https://query1.finance.yahoo.com'+path)]
+];
+var lines=[];
+function log(s){ lines.push(s); document.getElementById('out').textContent=lines.join('\n'); }
+(async function(){
+  for(var i=0;i<cands.length;i++){
+    var name=cands[i][0], url=cands[i][1];
+    var t0=Date.now();
+    try{
+      var ctl=new AbortController();
+      var timer=setTimeout(function(){ctl.abort();},9000);
+      var res=await fetch(url,{signal:ctl.signal,cache:'no-store'});
+      clearTimeout(timer);
+      var txt=await res.text();
+      var okJson=false, note='';
+      try{ var j=JSON.parse(txt); okJson=!!(j.chart&&j.chart.result); }catch(e){ note='not-json'; }
+      log(name+': status='+res.status+' ok='+res.ok+' bytes='+txt.length+' chart='+okJson+(note?' '+note:'')+' ('+(Date.now()-t0)+'ms) head='+txt.slice(0,60).replace(/[\n\r]+/g,' '));
+    }catch(e){
+      log(name+': ERR '+(e&&e.name)+' '+(e&&e.message)+' ('+(Date.now()-t0)+'ms)');
+    }
+  }
+  log('done');
+})();
+</script>
+</body></html>
